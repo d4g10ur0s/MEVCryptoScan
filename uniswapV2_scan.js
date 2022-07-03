@@ -28,8 +28,9 @@ query tokens($tokenAddress : String!){
   }
 }
 `
-  var address1 = await address.toLowerCase();
+  var address1 = await address.toLowerCase();//after many attempts this has to be LowerCase
   await console.log(address1);
+  //request uniswap to identify the coin
   await request('https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2',
                 QUERY_PAIR,
                 {tokenAddress : address1}).then( (data) =>
