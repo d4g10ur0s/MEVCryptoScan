@@ -1,5 +1,5 @@
 var ethers = require("ethers");//to API pou xrhsimopoiw
-var url = "YOUR_NODE_API_KEY";// QuickNode
+var url = "your api key";// QuickNode
 var fs = require('fs/promises');
 var univ2_pair = require('./uniswapV2_scan.js');
 
@@ -17,15 +17,15 @@ const UniSwapV2_ROUTER_ABI = [{"inputs":[{"internalType":"address","name":"_fact
 //gia na grapsw se arxeio
 //DEX INFO
 const name = "uniswapV2";
-
-var address = ethers.utils.getAddress('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D');
+console.log(ethers)
+var address = ethers.getAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D");
 //ABI INFO
-const UniV2_iface = new ethers.utils.Interface(UniSwapV2_ROUTER_ABI);
+const UniV2_iface = new ethers.Interface(UniSwapV2_ROUTER_ABI);
 
 var init = async function () {
   var start = Date.now();
 
-  var customWsProvider = new ethers.providers.WebSocketProvider(url);//anoigw sundesh me QuickNode
+  var customWsProvider = new ethers.WebSocketProvider(url);//anoigw sundesh me QuickNode
   //pairnw hash apo ka8e transaction to opoio einai pending
   //h sunarthsh kaleitai ka8e fora pou to mempool lamvanei ena neo trensaction pros epikurwsh
   customWsProvider.on("pending", (tx) => {
@@ -33,13 +33,14 @@ var init = async function () {
     customWsProvider.getTransaction(tx).then(async function (transaction) {//pairnw info transaction vasei hash
       try{//den se endiaferei ti einai
         for( i in address){//gia ka8e address sthn anw lista
-          if ((transaction != null && ethers.utils.getAddress(transaction.from).indexOf(address[i])!==-1)||
-          (transaction != null && ethers.utils.getAddress(transaction.to).indexOf(address[i])!==-1)) {
+          if ((transaction != null && ethers.getAddress(transaction.from).indexOf(address[i])!==-1)||
+          (transaction != null && ethers.getAddress(transaction.to).indexOf(address[i])!==-1)) {
             var end = Date.now();
             if(i==0){//uniswapv2
-              console.log(`DEX : ${names[i]}`);
-              //console.log(transaction);
+              //console.log(`DEX : ${names[i]}`);
               decodedData = UniV2_iface.parseTransaction({ data: transaction.data, value: transaction.value});
+              console.log(transaction)
+              console.log(decodedData);
               //console.log(decodedData);
               if(decodedData.functionFragment.name == 'swapExactETHForTokens' || decodedData.functionFragment.name == 'swapExactTokensForTokens'){
                 console.log("From Coin : ")
@@ -103,10 +104,11 @@ var init = async function () {
   });
 
 
-  customWsProvider._websocket.on("error", async () => {
+  customWsProvider.on("error", async () => {
     console.log(`Unable to connect to ${ep.subdomain} retrying in 3s...`);
     setTimeout(init, 3000);
   });
+  /*
 
   customWsProvider._websocket.on("close", async (code) => {
     console.log(
@@ -115,6 +117,7 @@ var init = async function () {
     customWsProvider._websocket.terminate();
     setTimeout(init, 3000);
   });
+  */
 };
 
 init();
