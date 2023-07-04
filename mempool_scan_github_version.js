@@ -1,7 +1,21 @@
 var ethers = require("ethers");//to API pou xrhsimopoiw
-var url = "your api key";// QuickNode
 var fs = require('fs/promises');
 var univ2_pair = require('./uniswapV2_scan.js');
+
+const axios = require('axios');
+
+async function getCoinName(provider,tokenAddress) {
+  const url = `https://etherscan.io/token/`+tokenAddress;
+  const response = await axios.get(url);
+  const tokenList = response.data; // Array of token data objects
+  console.log(tokenList)
+  const token = tokenList.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase());
+  if (token) {
+    return token.name;
+  } else {
+    throw new Error(`Could not find coin name for address ${tokenAddress}`);
+  }
+}
 
 //uniswap ABI
 /*
@@ -17,15 +31,25 @@ const UniSwapV2_ROUTER_ABI = [{"inputs":[{"internalType":"address","name":"_fact
 //gia na grapsw se arxeio
 //DEX INFO
 const name = "uniswapV2";
-console.log(ethers)
 var address = ethers.getAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D");
 //ABI INFO
 const UniV2_iface = new ethers.Interface(UniSwapV2_ROUTER_ABI);
 
+async function getPrice(provider, token0Address, token1Address) {
+  const routerContract = new ethers.Contract(routerAddress, routerAbi, provider);
+
+  const reserves = await routerContract.getReserves(token0Address, token1Address);
+  const token0Amount = reserves._reserve0.toString();
+  const token1Amount = reserves._reserve1.toString();
+  const price = token1Amount / token0Amount;
+
+  return price;
+}
+
 var init = async function () {
   var start = Date.now();
-
   var customWsProvider = new ethers.WebSocketProvider(url);//anoigw sundesh me QuickNode
+  routerContract = new ethers.Contract(address, UniSwapV2_ROUTER_ABI, customWsProvider);
   //pairnw hash apo ka8e transaction to opoio einai pending
   //h sunarthsh kaleitai ka8e fora pou to mempool lamvanei ena neo trensaction pros epikurwsh
   customWsProvider.on("pending", (tx) => {
@@ -33,71 +57,47 @@ var init = async function () {
     customWsProvider.getTransaction(tx).then(async function (transaction) {//pairnw info transaction vasei hash
       try{//den se endiaferei ti einai
         for( i in address){//gia ka8e address sthn anw lista
-          if ((transaction != null && ethers.getAddress(transaction.from).indexOf(address[i])!==-1)||
-          (transaction != null && ethers.getAddress(transaction.to).indexOf(address[i])!==-1)) {
+          if ((transaction != null && ethers.getAddress(transaction.from).indexOf(address)!==-1)||
+          (transaction != null && ethers.getAddress(transaction.to).indexOf(address)!==-1)) {
             var end = Date.now();
             if(i==0){//uniswapv2
-              //console.log(`DEX : ${names[i]}`);
-              decodedData = UniV2_iface.parseTransaction({ data: transaction.data, value: transaction.value});
-              console.log(transaction)
-              console.log(decodedData);
+              decodedData = UniV2_iface.parseTransaction({ data: transaction.data });
               //console.log(decodedData);
-              if(decodedData.functionFragment.name == 'swapExactETHForTokens' || decodedData.functionFragment.name == 'swapExactTokensForTokens'){
-                console.log("From Coin : ")
-                console.log(decodedData.args[1][0]);
-                console.log("To Coin : ")
-                console.log(decodedData.args[1][1]);
-                var amt = await parseInt(decodedData.value._hex)* Math.pow(10,-18);
-                console.log("amountIn: " + amt);
-                //edw paizei malakeia mallon
-                try{
-                  var res = await univ2_pair(decodedData.args[1][0],decodedData.args[1][1]);
-                  var token_val0 = await res.pair.reserve0/res.pair.reserve1;
-                  var token_val1 = await (res.pair.reserve0+amt)/res.pair.reserve1;
-                  console.log("TokenVal0 : " + token_val0);
-                  console.log("TokenVal1 : " + token_val1);
-                }catch(e){
-                  //console.log(e.message);
-                  var jf = 1;
-                }
-              }else if(decodedData.functionFragment.name == 'addLiquidity'){
-                console.log("From Coin : ")
-                console.log(decodedData.args[0]);
-                console.log("To Coin : ")
-                console.log(decodedData.args[1]);
-                console.log("amountIn: " + amt);
-                var amt = await (parseInt(decodedData.value._hex)* Math.pow(10,-18))
-
-                //edw paizei malakeia mallon
-                try{
-                  var res = await univ2_pair(decodedData.args[0],decodedData.args[1]);
-                  var token_val0 = await res.pair.reserve0/res.pair.reserve1;
-                  var token_val1 = await (res.pair.reserve0+amt)/res.pair.reserve1;
-                  console.log("TokenVal0 : " + token_val0);
-                  console.log("TokenVal1 : " + token_val1);
-
-                }catch(e){
-                  var jhfe = 1;//console.log(e.message);
-                }
-              }else{
-                console.log("From Coin : ")
-                console.log(decodedData.args[2][0]);
-                console.log("To Coin : ")
-                console.log(decodedData.args[2][1]);
-                var amt = await parseInt(decodedData.args.amountIn._hex)* Math.pow(10,-18);
-                console.log("amountIn: " + amt);
-
-                var res = await univ2_pair(decodedData.args[2][0],decodedData.args[2][1]);
-                var token_val0 = await res.pair.reserve0/res.pair.reserve1;
-                var token_val1 = await (res.pair.reserve0+amt)/res.pair.reserve1;
-                console.log("TokenVal0 : " + token_val0);
-                console.log("TokenVal1 : " + token_val1);
-
+              if(decodedData.signature.includes('addLiquidityETH')){
+                console.log("Add Liquidity ETH to : ")
+                console.log(decodedData)
               }
+              if(decodedData.signature.includes('swapExactETHForTokens')){
+                console.log("Add swapExactETHForTokens to : ")
+                console.log(decodedData.args[1][1])
+                console.log(decodedData.args[1][0])
+                // Call the getAmountsOut function to get the expected output token amount
+                const amounts = await routerContract.getAmountsOut(decodedData.args[0], [decodedData.args[1][0], decodedData.args[1][1]]);
+                const outputAmount = amounts;
+                // Calculate the price of the pair
+                var price = Number(amounts[amounts.length - 1]/(ethers.parseUnits('1', 'ether'))) * 1e-18;
+                console.log(`Pair price: ${price} ${decodedData.args[1][1]}`);
+                price = Number(amounts[amounts.length - 1])//ethers.parseUnits('1', 'ether'));
+                console.log(`Pair price: ${ethers.formatEther(price)} ${decodedData.args[1][1]}`);
+              }
+              if(decodedData.signature.includes('swapExactTokensForETH')){
+                console.log("Add swapExactTokensForETH to : ")
+                console.log(decodedData.args[2][1])
+              }
+              /*
+              for (i in decodedData.args){
+                if (typeof decodedData.args[i] == 'object'){
+                  getCoinName(decodedData.args[1][1])
+                    .then(name => console.log(`Coin name: ${name}`))
+                    .catch(error => console.error(error));
+                }
+              }
+              */
             }
           }
         }//end for
-      }catch (e){var ahg =1;//console.log(e);
+      }catch (e){
+        console.log(e);
       }
 
     });
